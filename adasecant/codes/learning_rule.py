@@ -43,7 +43,9 @@ class Adasecant(LearningRule):
     delta_clip: float, optional,
         The threshold to clip the deltas after.
     grad_clip: float, optional,
-        Apply gradient clipping for RNNs (not necessary for feedforward networks). Based on:
+        Apply gradient clipping for RNNs (not necessary for feedforward networks). But this is
+        a constraint on the norm of the gradient per layer.
+        Based on:
             Pascanu, Razvan, Tomas Mikolov, and Yoshua Bengio. "On the difficulty of training
             recurrent neural networks." arXiv preprint arXiv:1211.5063 (2012).
     use_adagrad: bool, optional
@@ -52,12 +54,13 @@ class Adasecant(LearningRule):
         Either to use correction for gradients (referred as variance
         reduction in the workshop paper).
     """
-    def __init__(self, decay=0.99,
+    def __init__(self, decay=0.95,
                  gamma_clip=1.8,
                  grad_clip=None,
                  start_var_reduction=0,
                  delta_clip=None,
                  use_adagrad=False,
+                 skip_nan_inf=False,
                  use_corrected_grad=True):
 
         assert decay >= 0.
@@ -71,6 +74,15 @@ class Adasecant(LearningRule):
         self.use_corrected_grad = use_corrected_grad
         self.use_adagrad = use_adagrad
         self.damping = 1e-7
+
+        # We have to bound the tau to prevent it to
+        # grow to an arbitrarily large number, oftenwise
+        # that causes numerical instabilities for very deep
+        # networks. Note that once tau become very large, it will keep,
+        # increasing indefinitely.
+        self.skip_nan_inf = skip_nan_inf
+        self.upper_bound_tau = 1e8
+        self.lower_bound_tau = 1.5
 
     def get_updates(self, learning_rate, grads, lr_scalers=None):
         """
@@ -90,26 +102,40 @@ class Adasecant(LearningRule):
         """
 
         updates = OrderedDict({})
-        eps = 1e-7
+        eps = self.damping
         step = sharedX(0., name="step")
+
+        if self.skip_nan_inf:
+            #If norm of the gradients of a parameter is inf or nan don't update that parameter
+            #That might be useful for RNNs.
+            grads = OrderedDict({p: T.switch(T.or_(T.isinf(grads[p]),
+                T.isnan(grads[p])), 0, grads[p]) for
+                p in grads.keys()})
+
+        #Block-normalize gradients:
+        grads = OrderedDict({p: grads[p] / (grads[p].norm(2) + eps) for p in grads.keys()})
+        nparams = len(grads.keys())
 
         #Apply the gradient clipping, this is only necessary for RNNs and sometimes for very deep
         #networks
         if self.grad_clip:
             assert self.grad_clip > 0.
+            assert self.grad_clip <= 1., "Norm of the gradients per layer can not be larger than 1."
             gnorm = sum([g.norm(2) for g in grads.values()])
-            grads = OrderedDict({p : T.switch(gnorm > self.grad_clip, g*self.grad_clip/gnorm, g)\
+
+            grads = OrderedDict({p : T.switch(gnorm/nparams > self.grad_clip,
+                g * self.grad_clip * nparams / gnorm , g)\
                     for p, g in grads.iteritems()})
 
         for param in grads.keys():
-
-            mean_grad = sharedX(param.get_value() * 0. + eps)
-            mean_corrected_grad = sharedX(param.get_value() * 0 + eps)
+            grads[param].name = "grad_%s" % param.name
+            mean_grad = sharedX(param.get_value() * 0. + eps, name="mean_grad_%s" % param.name)
+            mean_corrected_grad = sharedX(param.get_value() * 0 + eps, name="mean_corrected_grad_%s" % param.name)
             slow_constant = 2.1
 
             if self.use_adagrad:
                 # sum_square_grad := \sum_i g_i^2
-                sum_square_grad = sharedX(param.get_value(borrow=True) * 0.)
+                sum_square_grad = sharedX(param.get_value(borrow=True) * 0., name="sum_square_grad_%s" % param.name)
 
             """
             Initialization of accumulators
@@ -142,7 +168,6 @@ class Adasecant(LearningRule):
 
             #The uncorrected gradient of previous of the previous update:
             old_plain_grad = sharedX(param.get_value() * 0. + eps)
-
             mean_curvature = sharedX(param.get_value() * 0. + eps)
             mean_curvature_sqr = sharedX(param.get_value() * 0. + eps)
 
@@ -150,7 +175,7 @@ class Adasecant(LearningRule):
             mean_dx = sharedX(param.get_value() * 0.)
 
             # Block-wise normalize the gradient:
-            norm_grad = grads[param] / grads[param].norm(2)
+            norm_grad = grads[param] #/ grads[param].norm(2)
 
             #For the first time-step, assume that delta_x_t := norm_grad
             cond = T.eq(step, 0)
@@ -165,12 +190,13 @@ class Adasecant(LearningRule):
                 mean_square_grad * (self.decay)  +
                 T.sqr(norm_grad) * (1 - self.decay)
             )
-
+            new_mean_squared_grad.name = "msg_" + param.name
             # E[g_i]_t
             new_mean_grad = (
                 mean_grad * (self.decay) +
                 norm_grad * (1 - self.decay)
             )
+            new_mean_grad.name = "nmg_" + param.name
 
             mg = new_mean_grad
             mgsq = new_mean_squared_grad
@@ -180,13 +206,16 @@ class Adasecant(LearningRule):
                 gamma_nume_sqr * (1 - 1 / taus_x_t) +
                 T.sqr((norm_grad - old_grad) * (old_grad - mg)) / taus_x_t
             )
+            new_gamma_nume_sqr.name = "ngammasqr_num_" + param.name
 
             new_gamma_deno_sqr = (
                 gamma_deno_sqr * (1 - 1 / taus_x_t) +
                 T.sqr((mg - norm_grad) * (old_grad - mg)) / taus_x_t
             )
+            new_gamma_deno_sqr.name = "ngammasqr_den_" + param.name
 
             gamma = T.sqrt(gamma_nume_sqr) / T.sqrt(gamma_deno_sqr + eps)
+            gamma.name = "gamma_" + param.name
 
             if self.gamma_clip:
                 gamma = T.minimum(gamma, self.gamma_clip)
@@ -214,12 +243,14 @@ class Adasecant(LearningRule):
             # Use the gradients from the previous update
             # to compute the \nabla f(x_t) - \nabla f(x_{t-1})
             cur_curvature = norm_grad - old_plain_grad
+            #cur_curvature = theano.printing.Print("Curvature: ")(cur_curvature)
             cur_curvature_sqr = T.sqr(cur_curvature)
 
             new_curvature_ave = (
                 mean_curvature * (1 - 1 / taus_x_t) +
                 (cur_curvature / taus_x_t)
             )
+            new_curvature_ave.name = "ncurve_ave_" + param.name
 
             #Average average curvature
             nc_ave = new_curvature_ave
@@ -228,6 +259,7 @@ class Adasecant(LearningRule):
                 mean_curvature_sqr * (1 - 1 / taus_x_t) +
                 (cur_curvature_sqr / taus_x_t)
             )
+            new_curvature_sqr_ave.name = "ncurve_sqr_ave_" + param.name
 
             #Unbiased average squared curvature
             nc_sq_ave = new_curvature_sqr_ave
@@ -240,6 +272,7 @@ class Adasecant(LearningRule):
 
             #This is where the update step is being defined
             delta_x_t = -scaled_lr * (rms_dx_tm1 / rms_curve_t - cov_num_t / (new_curvature_sqr_ave + epsilon))
+            delta_x_t.name = "delta_x_t_" + param.name
 
             # This part seems to be necessary for only RNNs
             # For feedforward networks this does not seem to be important.
@@ -277,7 +310,11 @@ class Adasecant(LearningRule):
             #This outlier detection is slightly different:
             new_taus_t = T.switch(T.or_(abs(norm_grad - mg) > (2 * T.sqrt(mgsq  - mg**2)),
                                         abs(cur_curvature - nc_ave) > (2 * T.sqrt(nc_sq_ave - nc_ave**2))),
-                                        T.switch(new_taus_t > 2.5, sharedX(2.5) + eps, new_taus_t + sharedX(1.0) + eps), new_taus_t)
+                                        T.switch(new_taus_t > 2.5, sharedX(2.5), new_taus_t + sharedX(1.0) + eps), new_taus_t)
+
+            #Apply the bound constraints on tau:
+            new_taus_t = T.maximum(self.lower_bound_tau, new_taus_t)
+            new_taus_t = T.minimum(self.upper_bound_tau, new_taus_t)
 
             new_cov_num_t = (
                 cov_num_t * (1 - 1 / taus_x_t) +
@@ -292,7 +329,7 @@ class Adasecant(LearningRule):
             updates[mean_dx] = new_mean_dx
             updates[gamma_nume_sqr] = new_gamma_nume_sqr
             updates[gamma_deno_sqr] = new_gamma_deno_sqr
-            updates[taus_x_t] = T.maximum(new_taus_t, 1.5 + eps)
+            updates[taus_x_t] = new_taus_t
             updates[cov_num_t] = new_cov_num_t
             updates[mean_grad] = new_mean_grad
             updates[old_plain_grad] = norm_grad

@@ -92,13 +92,14 @@
     algorithm: !obj:pylearn2.training_algorithms.sgd.SGD {
         batch_size: 512,
         #TODO solve this issue:
-        #Pylearn2 gets angry if you don't provide a learning rate!
+        # pylearn2 gets angry if you don't provide
+        # a learning rate!
         learning_rate: 1e-7,
         learning_rule: !obj:adasecant.codes.learning_rule.Adasecant {
             start_var_reduction: 500,
             use_adagrad: True,
             gamma_clip: 1.8,
-            grad_clip: 5
+            grad_clip: 25
         },
         monitoring_dataset:
         {
@@ -122,6 +123,6 @@
              save_path: "${PYLEARN2_TRAIN_FILE_FULL_STEM}_norm_best.pkl"
         },
     ],
-    save_path: "${PYLEARN2_TRAIN_FILE_FULL_STEM}_norm3.pkl",
+    save_path: "${PYLEARN2_TRAIN_FILE_FULL_STEM}_norm.pkl",
     save_freq: 1
 }
