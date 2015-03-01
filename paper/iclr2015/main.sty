@@ -1,0 +1,162 @@
+\usepackage{./iclr2015,times}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage[hmargin=2cm,vmargin=2.5cm]{geometry}
+\usepackage{multirow}
+\usepackage{wrapfig}
+\usepackage{epsfig}
+\usepackage{framed}
+\usepackage{textcomp}
+\usepackage{color}
+\usepackage{booktabs}
+\usepackage{pdflscape}
+\usepackage[ruled]{algorithm2e}
+
+\newcommand{\theHalgorithm}{\arabic{algorithm}}
+
+%\usepackage[usenames,dvipsnames]{pstricks}
+\definecolor{darkblue}{RGB}{47,68,117}
+\definecolor{lightgray}{gray}{0.95}
+\usepackage{subfigure}
+%\usepackage{subcaption}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Notes on use of hyperlinks:
+%% \url{http://www.wikibooks.org}
+%% \href{http://www.wikibooks.org}{wikibooks home}
+%% \href{mailto:email@site.com}{email@site.com}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\newcommand{\fix}{\marginpar{FIX}}
+\newcommand{\new}{\marginpar{NEW}}
+\newcommand*{\argminl}{\argmin\limits}
+
+%%%%% NEW MATH DEFINITIONS %%%%%
+\newcommand{\train}{\mathcal{D}}
+\newcommand{\valid}{\mathcal{D_{\mathrm{valid}}}}
+\newcommand{\test}{\mathcal{D_{\mathrm{test}}}}
+\newcommand{\E}{\mathrm{E}}
+\newcommand{\Ls}{\mathcal{L}}
+\newcommand{\R}{\mathcal{R}}
+\newcommand{\emp}{\tilde{p}}
+\newcommand{\lr}{\alpha}
+\newcommand{\reg}{\lambda}
+\newcommand{\KL}{\mathrm{KL}}
+
+\def\W{{\mathbf W}}
+\def\b{{\mathbf b}}
+\def\s{{\mathbf s}}
+\def\H{{\mathbf H}}
+
+\newcommand{\trace}{\mathop{\mathrm{Tr}}}
+\newcommand{\N}{\mathbb{N}}
+
+\def\ci{\perp\!\!\!\perp} % from Wikipedia, conditional independence
+
+\newcommand{\params}{\boldsymbol{\theta}}
+\newcommand{\popsize}{n}
+\newcommand{\gradw}{\widehat{\nabla_{\params}}}
+\newcommand{\gradj}{\nabla_{\theta_{i}}}
+\newcommand{\gradz}{\nabla_{\theta_{0}}}
+\newcommand{\gradjj}[1]{\nabla_{\params_{#1}}}
+
+\newcommand{\hatg}{\overline{g_i}}
+\newcommand{\hatv}{\overline{v_i}}
+\newcommand{\hath}{\overline{h_i}}
+\newcommand{\hatvg}{\overline{l}}
+
+
+\newcommand{\bmx}[0]{\begin{bmatrix}}
+\newcommand{\emx}[0]{\end{bmatrix}}
+\newcommand{\qt}[1]{\left<#1\right>}
+\newcommand{\qexp}[1]{\left<#1\right>}
+\newcommand{\qlay}[1]{\left[#1\right]}
+\newcommand{\vects}[1]{\boldsymbol{#1}}
+\newcommand{\vect}[1]{\mathbf{#1}}
+\newcommand{\matr}[1]{\mathbf{#1}}
+\newcommand{\var}[0]{\operatorname{Var}}
+\newcommand{\cov}[0]{\operatorname{Cov}}
+\newcommand{\diag}[0]{\operatorname{diag}}
+\newcommand{\va}[0]{\vect{a}}
+\newcommand{\vb}[0]{\vect{b}}
+\newcommand{\vd}[0]{\vect{d}}
+\newcommand{\vc}[0]{\vect{c}}
+\newcommand{\vh}[0]{\vect{h}}
+\newcommand{\vv}[0]{\vect{v}}
+\newcommand{\vr}[0]{\vect{r}}
+\newcommand{\vx}[0]{\vect{x}}
+\newcommand{\vw}[0]{\vect{w}}
+\newcommand{\vs}[0]{\vect{s}}
+\newcommand{\vf}[0]{\vect{f}}
+\newcommand{\vy}[0]{\vect{y}}
+\newcommand{\vt}[0]{\vect{t}}
+\newcommand{\vg}[0]{\vect{g}}
+\newcommand{\vm}[0]{\vect{m}}
+\newcommand{\vu}[0]{\vect{u}}
+\newcommand{\vL}[0]{\vect{L}}
+\newcommand{\mW}[0]{\matr{W}}
+\newcommand{\mE}[0]{\matr{E}}
+\newcommand{\mG}[0]{\matr{G}}
+\newcommand{\mX}[0]{\matr{X}}
+\newcommand{\mQ}[0]{\matr{Q}}
+\newcommand{\mH}[0]{\matr{H}}
+\newcommand{\mU}[0]{\matr{U}}
+\newcommand{\mA}{\matr{A}}
+\newcommand{\mB}{\matr{B}}
+\newcommand{\mD}{\matr{D}}
+\newcommand{\mS}{\matr{S}}
+\newcommand{\mT}{\matr{T}}
+\newcommand{\mI}{\matr{I}}
+\newcommand{\mV}{\matr{V}}
+\newcommand{\Scal}[0]{\mathcal{S}}
+\newcommand{\loss}{\mathcal{L}}
+
+\newcommand{\td}[0]{\text{d}}
+\newcommand{\vsig}[0]{\vects{\sigma}}
+\newcommand{\vmu}[0]{\vects{\mu}}
+\newcommand{\tf}[0]{\text{m}}
+\newcommand{\tdf}[0]{\text{dm}}
+\newcommand{\TT}[0]{{\vects{\theta}}}
+\newcommand{\grad}[0]{\nabla}
+\newcommand{\alert}[1]{\textcolor{red}{#1}}
+\newcommand{\LL}[0]{\mathcal{L}}
+\newcommand{\HH}[0]{\mathcal{H}}
+\newcommand{\sigmoid}{\sigma}
+\newcommand{\enabla}[0]{\ensuremath{%
+    \overset{\raisebox{-0.3ex}[0.5ex][0ex]{%
+    \ensuremath{\scriptscriptstyle e}}}{\nabla}}}
+
+\newcommand{\enhnabla}[0]{\nabla_{\hspace{-0.5mm}e}\,}
+\newcommand{\tred}[1]{\textcolor{red}{#1}}
+\newcommand{\f}[0]{\text{f}}
+\newcommand{\g}[0]{\text{g}}
+\DeclareMathOperator*{\argmin}{arg\,min}
+\DeclareMathOperator*{\argmax}{arg\,max}
+\DeclareUnicodeCharacter{00A0}{ }
+
+\newcommand{\J}{\mathcal{J}}
+\newcommand{\x}{{\bf x}}
+\newcommand{\h}{{\bf h}}
+
+\newcommand{\Err}{\rm Err}
+\newcommand{\MU}{\rm MU}
+
+
+%%%%%%%%%%%% ASTRONOMY %%%%%%%%%%%%%%%%
+\newcommand{\Msun}{M_\odot}
+\newcommand{\Lsun}{L_\odot}
+\newcommand{\Rsun}{R_\odot}
+\newcommand{\Mearth}{M_\oplus}
+\newcommand{\Learth}{L_\oplus}
+\newcommand{\Rearth}{R_\oplus}
+%%%%%%%%%%% MATHEMATICS %%%%%%%%%%%%%%%
+\newcommand{\be}{\begin{equation}}
+\newcommand{\ee}{\end{equation}}
+\newcommand{\bea}{\begin{eqnarray}}
+\newcommand{\eea}{\end{eqnarray}}
+\newcommand{\eqnarr}{\begin{eqnarray}}
+\newcommand{\eqnend}{\end{eqnarray}}
+\newcommand{\deriv}[2]{\frac{d #1}{d #2}}
+\newcommand{\bigO}{\mathcal{O}}
+\DeclareMathSymbol{\umu}{\mathalpha}{operators}{0}
+%\graphicspath{ {./figs/} }
