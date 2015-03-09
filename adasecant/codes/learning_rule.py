@@ -175,7 +175,7 @@ class Adasecant(LearningRule):
             mean_dx = sharedX(param.get_value() * 0.)
 
             # Block-wise normalize the gradient:
-            norm_grad = grads[param] #/ grads[param].norm(2)
+            norm_grad = grads[param]
 
             #For the first time-step, assume that delta_x_t := norm_grad
             cond = T.eq(step, 0)
@@ -243,7 +243,6 @@ class Adasecant(LearningRule):
             # Use the gradients from the previous update
             # to compute the \nabla f(x_t) - \nabla f(x_{t-1})
             cur_curvature = norm_grad - old_plain_grad
-            #cur_curvature = theano.printing.Print("Curvature: ")(cur_curvature)
             cur_curvature_sqr = T.sqr(cur_curvature)
 
             new_curvature_ave = (
@@ -310,7 +309,7 @@ class Adasecant(LearningRule):
             #This outlier detection is slightly different:
             new_taus_t = T.switch(T.or_(abs(norm_grad - mg) > (2 * T.sqrt(mgsq  - mg**2)),
                                         abs(cur_curvature - nc_ave) > (2 * T.sqrt(nc_sq_ave - nc_ave**2))),
-                                        T.switch(new_taus_t > 2.5, sharedX(2.5), new_taus_t + sharedX(1.0) + eps), new_taus_t)
+                                        sharedX(2.2), new_taus_t)
 
             #Apply the bound constraints on tau:
             new_taus_t = T.maximum(self.lower_bound_tau, new_taus_t)
